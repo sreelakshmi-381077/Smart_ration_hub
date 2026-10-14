@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Ration Hub 2026</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 1: LANDING — Stock Board + Register + Login buttons
+     ══════════════════════════════════════════════════════════ -->
+<!-- ── SHOP CLOSURE BANNER visible to ALL before login ─────── -->
+<div id="globalClosureBanner" style="display:none;
+     position:fixed;top:0;left:0;right:0;z-index:9999">
+</div>
+
+<div id="landingPage">
+
+  <!-- HEADER -->
+  <header>
+    <h1>🌾 Smart Ration Hub 2026</h1>
+    <p class="header-sub">
+      Digitized Public Distribution System — Kerala
+    </p>
+  </header>
+
+  <!-- LIVE STOCK BOARD -->
+  <section class="landing-section">
+    <h2>📦 Live Stock Availability</h2>
+    <p class="stock-sub">
+      Current available stock at your nearest ration shop
+    </p>
+    <div class="stock-grid" id="stockGrid">
+      <p style="color:#888;text-align:center;
+                grid-column:1/-1;padding:20px">
+        ⏳ Loading stock...
+      </p>
+    </div>
+    <p class="stock-updated" id="stockUpdated"></p>
+  </section>
+
+  <!-- ACTION BUTTONS -->
+  <section class="action-section">
+    <div class="action-grid">
+      <div class="action-card">
+        <div class="action-icon">📝</div>
+        <h3>New Citizen?</h3>
+        <p>Register your ration card and family members</p>
+        <button onclick="showPage('registerPage')">
+          Register Now
+        </button>
+      </div>
+      <div class="action-card">
+        <div class="action-icon">🔐</div>
+        <h3>Already Registered?</h3>
+        <p>Login with your ration card and Aadhaar number</p>
+        <button onclick="showPage('loginPage')"
+                style="background:#1565c0">
+          Login
+        </button>
+      </div>
+      <div class="action-card">
+        <div class="action-icon">🏪</div>
+        <h3>Dealer / Officer?</h3>
+        <p>Access dealer dashboard or supply officer portal</p>
+        <a href="admin.html" class="action-link">
+          Dealer Login →
+        </a>
+        <a href="officer.html" class="action-link"
+           style="background:#7e3af2;margin-top:8px">
+          Officer Login →
+        </a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 2: REGISTER
+     ══════════════════════════════════════════════════════════ -->
+<div id="registerPage" style="display:none">
+  <header>
+    <h1>🌾 Smart Ration Hub 2026</h1>
+    <button class="back-btn" onclick="showPage('landingPage')">
+      ← Back
+    </button>
+  </header>
+
+  <section class="form-section">
+    <h2>📝 Register Cardholder</h2>
+    <p style="color:#888;font-size:13px;margin-bottom:20px">
+      Fill all details carefully. Upload clear face photos
+      for each member — used for face verification at shop.
+    </p>
+
+    <div class="form-group">
+      <label>Ration Card Number</label>
+      <input id="regRationCard" type="text"
+             placeholder="e.g. KL123456"/>
+    </div>
+
+    <div class="form-group">
+      <label>Aadhaar Number</label>
+      <input id="regAadhaar" type="text"
+             placeholder="12-digit Aadhaar number"
+             maxlength="12"/>
+    </div>
+
+    <div class="form-group">
+      <label>Ration Card Category</label>
+      <select id="regCategory">
+        <option value="">-- Select Category --</option>
+        <option value="APL">APL — Above Poverty Line</option>
+        <option value="BPL">BPL — Below Poverty Line</option>
+        <option value="AAY">AAY — Antyodaya Anna Yojana</option>
+        <option value="PHH">PHH — Priority Household</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Family Members</label>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">
+        📷 Upload a clear face photo for each member.
+        This photo is used by the dealer for face
+        verification at ration collection time.
+      </p>
+      <div id="memberInputs">
+        <div class="member-row">
+          <input type="text" placeholder="Full Name"
+                 class="memberName"/>
+          <select class="memberRelation">
+            <option value="">-- Relationship --</option>
+            <option value="Head">Head of Family</option>
+            <option value="Spouse">Spouse</option>
+            <option value="Son">Son</option>
+            <option value="Daughter">Daughter</option>
+            <option value="Father">Father</option>
+            <option value="Mother">Mother</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="text" placeholder="Aadhaar (12 digits)"
+                 class="memberAadhaar" maxlength="12"/>
+          <div class="photo-upload-box">
+            <label class="photo-label">
+              📷 Upload Face Photo
+            </label>
+            <input type="file" class="memberPhoto"
+                   accept="image/*"
+                   onchange="previewMemberPhoto(this,0)"/>
+            <div class="photo-preview" id="preview_0"></div>
+          </div>
+        </div>
+      </div>
+      <button id="addMemberBtn" class="secondary-btn">
+        + Add Another Member
+      </button>
+    </div>
+
+    <button id="registerBtn" class="primary-btn">
+      ✅ Register
+    </button>
+    <p id="registerMsg" style="display:none;
+       padding:12px;border-radius:8px;
+       margin-top:12px;font-size:14px;
+       font-weight:bold"></p>
+
+    <p style="text-align:center;margin-top:20px;
+              font-size:13px;color:#888">
+      Already registered?
+      <a href="#" onclick="showPage('loginPage')"
+         style="color:#2e7d32;font-weight:bold">
+        Login here
+      </a>
+    </p>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 3: LOGIN — Enter credentials + OTP on same page
+     ══════════════════════════════════════════════════════════ -->
+<div id="loginPage" style="display:none">
+  <header>
+    <h1>🌾 Smart Ration Hub 2026</h1>
+    <button class="back-btn" onclick="showPage('landingPage')">
+      ← Back
+    </button>
+  </header>
+
+  <section class="form-section login-form-section">
+
+    <!-- STEP 1: Enter credentials -->
+    <div id="loginStep1">
+      <div class="login-icon">🔐</div>
+      <h2>Cardholder Login</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:24px">
+        Enter your ration card number and Aadhaar to login
+      </p>
+
+      <div class="form-group">
+        <label>Ration Card Number</label>
+        <input id="loginRationCard" type="text"
+               placeholder="e.g. KL123456"/>
+      </div>
+
+      <div class="form-group">
+        <label>Aadhaar Number</label>
+        <input id="loginAadhaar" type="text"
+               placeholder="12-digit Aadhaar number"
+               maxlength="12"/>
+      </div>
+
+      <button id="sendOtpBtn" class="primary-btn">
+        📱 Send OTP &amp; Login
+      </button>
+      <p id="loginCredError"
+         style="color:red;display:none;
+                margin-top:10px;font-size:13px"></p>
+    </div>
+
+    <!-- STEP 2: OTP Verification (same page) -->
+    <div id="loginStep2" style="display:none">
+      <div class="login-icon">🔑</div>
+      <h2>OTP Verification</h2>
+      <p style="color:#888;font-size:13px;margin-bottom:8px">
+        An OTP has been sent to your registered mobile number
+      </p>
+
+      <!-- OTP Display (demo mode) -->
+      <div class="login-otp-demo-box">
+        <p style="font-size:12px;color:#888;margin-bottom:6px">
+          🧪 Demo Mode — OTP shown on screen:
+        </p>
+        <div class="login-otp-number" id="loginOtpDisplay">
+          ——
+        </div>
+        <p class="login-otp-timer">
+          Valid for:
+          <strong id="loginOtpTimer"
+                  style="color:#e65100">24:00:00</strong>
+        </p>
+
+        <!-- OTP Reuse Notice -->
+        <div id="otpReuseNotice" style="display:none"></div>
+
+      </div>
+
+      <!-- OTP Input -->
+      <div class="form-group" style="margin-top:16px">
+        <label>Enter OTP</label>
+        <input id="loginOtpInput" type="text"
+               placeholder="Enter 6-digit OTP"
+               maxlength="6"
+               style="letter-spacing:6px;
+                      font-size:22px;
+                      text-align:center;
+                      font-weight:bold"/>
+      </div>
+
+      <button id="verifyLoginOtpBtn" class="primary-btn">
+        ✅ Verify OTP &amp; Enter Dashboard
+      </button>
+
+      <div style="display:flex;gap:10px;
+                  justify-content:center;margin-top:12px">
+        <button id="resendLoginOtpBtn" class="secondary-btn">
+          🔄 Resend OTP
+        </button>
+        <button onclick="showPage('landingPage')"
+                class="secondary-btn"
+                style="background:#fee2e2;color:#c62828;
+                       border-color:#fecaca">
+          ← Change Details
+        </button>
+      </div>
+
+      <p id="loginOtpError"
+         style="color:red;display:none;
+                margin-top:10px;font-size:13px;
+                text-align:center"></p>
+    </div>
+
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 4: DASHBOARD (after OTP login verified)
+     ══════════════════════════════════════════════════════════ -->
+<div id="dashboardPage" style="display:none">
+
+  <!-- Closure Notice — shown inside dashboard -->
+  <div id="dashClosureNotice" style="display:none;
+       padding:12px 16px 0">
+  </div>
+
+  <!-- DASHBOARD HEADER -->
+  <header class="dashboard-header">
+    <div class="dash-header-left">
+      <h1>🌾 Smart Ration Hub</h1>
+    </div>
+    <div class="dash-header-center">
+      <span id="dashWelcome"></span>
+    </div>
+    <div class="dash-header-right">
+      <button id="logoutBtn" class="logout-btn">
+        🚪 Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- DASHBOARD TABS -->
+  <div class="dash-tabs">
+    <button onclick="showDashTab('stockTab')"
+            class="dash-tab active" id="tab-stockTab">
+      📦 Stock Board
+    </button>
+    <button onclick="showDashTab('membersTab')"
+            class="dash-tab" id="tab-membersTab">
+      👥 My Family
+    </button>
+    <button onclick="showDashTab('tokenTab')"
+            class="dash-tab" id="tab-tokenTab">
+      🎫 Book Token
+    </button>
+    <button onclick="showDashTab('entitlementTab')"
+            class="dash-tab" id="tab-entitlementTab">
+      🌾 My Entitlement
+    </button>
+    <button onclick="showDashTab('billsTab')"
+            class="dash-tab" id="tab-billsTab">
+      📄 My Bills
+    </button>
+    <button onclick="showDashTab('reportTab')"
+            class="dash-tab" id="tab-reportTab">
+      📋 Report
+    </button>
+  </div>
+
+  <!-- DASHBOARD CONTENT -->
+  <div class="dash-content">
+
+    <!-- STOCK TAB -->
+    <div id="stockTab" class="dash-tab-content">
+      <div class="dash-card">
+        <h3>📦 Live Stock Availability</h3>
+        <p class="stock-sub">
+          Current stock at your nearest ration shop
+        </p>
+        <div class="stock-grid" id="dashStockGrid">
+          <p style="color:#888;text-align:center;
+                    grid-column:1/-1;padding:20px">
+            ⏳ Loading...
+          </p>
+        </div>
+        <p class="stock-updated" id="dashStockUpdated"></p>
+      </div>
+    </div>
+
+    <!-- MEMBERS TAB -->
+    <div id="membersTab" class="dash-tab-content"
+         style="display:none">
+      <div class="dash-card">
+        <h3>👥 My Family Members</h3>
+        <p style="color:#888;font-size:13px;margin-bottom:16px">
+          Photos uploaded here are used by dealer
+          for face verification at ration collection
+        </p>
+        <div id="dashMemberList"></div>
+      </div>
+    </div>
+
+    <!-- TOKEN TAB -->
+    <div id="tokenTab" class="dash-tab-content"
+         style="display:none">
+      <div class="dash-card">
+
+        <!-- My category info -->
+        <div class="category-banner" id="dashCategoryBanner">
+        </div>
+
+        <!-- Token booking box -->
+        <div id="tokenBookingBox">
+          <h3>🎫 Book Your Token</h3>
+          <p style="color:#888;font-size:13px;
+                    margin-bottom:16px">
+            Select shop and the family member who will
+            collect the ration. Their photo will be
+            used for face verification at the shop.
+          </p>
+
+          <!-- Select Shop -->
+          <label style="font-weight:bold;font-size:13px;
+                        color:#333;margin-bottom:6px;
+                        display:block">
+            🏪 Select Ration Shop:
+          </label>
+          <select id="shopSelect"
+                  style="margin-bottom:8px">
+            <option value="">-- Select Shop --</option>
+          </select>
+
+          <!-- Shop Closure Notice -->
+          <div id="shopClosureNotice" style="display:none;
+               margin-bottom:12px">
+          </div>
+
+          <!-- Select Member -->
+          <label style="font-weight:bold;font-size:13px;
+                        color:#333;margin-bottom:8px;
+                        display:block">
+            👤 Who is collecting ration?
+          </label>
+          <div id="memberSelectGrid"
+               style="display:grid;
+                      grid-template-columns:repeat(2,1fr);
+                      gap:10px;margin-bottom:16px">
+            <p style="color:#888;font-size:12px;
+                      grid-column:1/-1">
+              ⏳ Login to see family members...
+            </p>
+          </div>
+          <input type="hidden" id="selectedMemberId"
+                 value=""/>
+          <input type="hidden" id="selectedMemberName"
+                 value=""/>
+          <input type="hidden" id="selectedMemberPhoto"
+                 value=""/>
+
+          <!-- Selected Member Preview -->
+          <div id="selectedMemberPreview"
+               style="display:none;
+                      background:#f0fdf4;
+                      border:1px solid #bbf7d0;
+                      border-radius:10px;
+                      padding:12px;margin-bottom:14px">
+            <div style="display:flex;align-items:center;
+                        gap:12px">
+              <img id="selectedMemberPhotoPreview"
+                   src="" alt="Member"
+                   style="width:56px;height:56px;
+                          border-radius:50%;
+                          object-fit:cover;
+                          border:2px solid #2e7d32"/>
+              <div>
+                <div style="font-weight:bold;color:#1b5e20;
+                            font-size:14px"
+                     id="selectedMemberNameDisplay">
+                </div>
+                <div style="font-size:12px;color:#555"
+                     id="selectedMemberRelDisplay">
+                </div>
+                <div style="font-size:11px;color:#15803d;
+                            margin-top:2px">
+                  ✅ This member's face will be scanned
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button id="bookTokenBtn" class="primary-btn">
+            🎫 Book Token Now
+          </button>
+          <p id="bookingMsg"
+             style="display:none;margin-top:12px;
+                    padding:10px;border-radius:8px;
+                    font-weight:bold;font-size:14px"></p>
+        </div>
+
+        <!-- My token display -->
+        <div id="myTokenBox" style="display:none">
+
+          <h3 style="margin-bottom:12px;color:#1b5e20;
+                     font-size:16px">
+            🎫 Your Token Today
+          </h3>
+
+          <!-- Token Card -->
+          <div style="border:2px solid #2e7d32;
+                      border-radius:12px;overflow:hidden;
+                      margin-bottom:14px">
+
+            <!-- Token Header -->
+            <div style="background:linear-gradient(135deg,
+                          #1b5e20,#2e7d32);
+                        padding:14px 18px;color:white;
+                        display:flex;justify-content:space-between;
+                        align-items:center">
+              <div>
+                <div style="font-size:11px;opacity:0.8;
+                            text-transform:uppercase;
+                            letter-spacing:1px">
+                  Token Number
+                </div>
+                <div id="myTokenNumber"
+                     style="font-size:36px;font-weight:bold;
+                            line-height:1">
+                  —
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div id="myTokenStatusBadge"
+                     style="background:rgba(255,255,255,0.2);
+                            padding:4px 12px;border-radius:20px;
+                            font-size:12px;font-weight:bold;
+                            margin-bottom:4px">
+                  ⏳ WAITING
+                </div>
+                <div style="font-size:11px;opacity:0.8">
+                  📅 Today
+                </div>
+              </div>
+            </div>
+
+            <!-- Token Info -->
+            <div style="padding:14px 18px;background:#f0fdf4">
+              <div style="display:grid;
+                          grid-template-columns:1fr 1fr;
+                          gap:8px;font-size:13px">
+                <div>
+                  <span style="color:#888;font-size:11px">
+                    🏪 Shop
+                  </span><br/>
+                  <strong id="myShopName">—</strong>
+                </div>
+                <div>
+                  <span style="color:#888;font-size:11px">
+                    📋 Queue Position
+                  </span><br/>
+                  <strong id="myQueuePos">—</strong>
+                </div>
+                <div>
+                  <span style="color:#888;font-size:11px">
+                    🕐 Booked At
+                  </span><br/>
+                  <strong id="myBookedAt">—</strong>
+                </div>
+                <div>
+                  <span style="color:#888;font-size:11px">
+                    ⏰ Est. Time
+                  </span><br/>
+                  <strong id="myEstTime">—</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Collector Info -->
+            <div id="myCollectorBox"
+                 style="padding:12px 18px;
+                        border-top:1px solid #e5e7eb;
+                        background:white">
+            </div>
+          </div>
+
+          <!-- OTP Box — show login OTP to citizen -->
+          <div id="myTokenOTPBox" style="display:none">
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex;gap:10px;
+                      flex-wrap:wrap">
+
+            <!-- Change Collector Button -->
+            <button id="changeCollectorBtn"
+                    onclick="showChangeCollector()"
+                    style="flex:1;min-width:140px;
+                           background:#1565c0;
+                           color:white;padding:10px;
+                           font-size:13px;
+                           border:none;border-radius:8px;
+                           cursor:pointer">
+              🔄 Change Collector
+            </button>
+
+            <!-- Cancel Token -->
+            <button id="cancelTokenBtn"
+                    style="flex:1;min-width:140px;
+                           background:#c62828;
+                           color:white;padding:10px;
+                           font-size:13px;
+                           border:none;border-radius:8px;
+                           cursor:pointer">
+              ❌ Cancel Token
+            </button>
+          </div>
+
+          <!-- Change Collector Section (hidden by default) -->
+          <div id="changeCollectorBox"
+               style="display:none;margin-top:14px;
+                      border:2px solid #1565c0;
+                      border-radius:12px;overflow:hidden">
+
+            <!-- Header -->
+            <div style="background:#1565c0;padding:12px 16px;
+                        color:white">
+              <div style="font-size:14px;font-weight:bold">
+                🔄 Change Ration Collector
+              </div>
+              <div style="font-size:11px;opacity:0.85;
+                          margin-top:2px">
+                Select a different family member to collect ration.
+                The token stays — only the collector changes.
+              </div>
+            </div>
+
+            <!-- Reason Selection -->
+            <div style="padding:14px 16px;background:#eff6ff;
+                        border-bottom:1px solid #bfdbfe">
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:6px">
+                📋 Reason for change:
+              </label>
+              <select id="changeReason"
+                      style="width:100%;padding:9px 12px;
+                             border:1.5px solid #bfdbfe;
+                             border-radius:8px;font-size:13px">
+                <option value="">-- Select Reason --</option>
+                <option value="Collector is sick">
+                  🤒 Collector is sick
+                </option>
+                <option value="Collector is at work">
+                  💼 Collector is at work / busy
+                </option>
+                <option value="Collector is out of town">
+                  🚗 Collector is out of town
+                </option>
+                <option value="Collector has an emergency">
+                  🚨 Collector has an emergency
+                </option>
+                <option value="Other inconvenience">
+                  📝 Other inconvenience
+                </option>
+              </select>
+            </div>
+
+            <!-- Member Selection -->
+            <div style="padding:14px 16px;background:white">
+              <div style="font-size:12px;font-weight:bold;
+                          color:#333;margin-bottom:10px">
+                👤 Select New Collector:
+              </div>
+              <div id="changeCollectorGrid"
+                   style="display:grid;
+                          grid-template-columns:repeat(2,1fr);
+                          gap:10px;margin-bottom:12px">
+                <p style="color:#888;font-size:12px;
+                           grid-column:1/-1">
+                  ⏳ Loading members...
+                </p>
+              </div>
+
+              <!-- Selected New Member Preview -->
+              <div id="newCollectorPreview"
+                   style="display:none;
+                          background:#eff6ff;
+                          border:1px solid #bfdbfe;
+                          border-radius:8px;padding:10px;
+                          margin-bottom:12px">
+                <div style="display:flex;
+                            align-items:center;gap:10px">
+                  <img id="newCollectorPhoto"
+                       src="" alt="New Collector"
+                       style="width:44px;height:44px;
+                              border-radius:50%;
+                              object-fit:cover;
+                              border:2px solid #1565c0"/>
+                  <div>
+                    <div style="font-size:13px;
+                                font-weight:bold;
+                                color:#1565c0"
+                         id="newCollectorName">
+                    </div>
+                    <div style="font-size:11px;color:#555"
+                         id="newCollectorRel">
+                    </div>
+                    <div style="font-size:10px;
+                                color:#1565c0;margin-top:2px">
+                      ✅ Will be scanned at shop
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hidden inputs -->
+              <input type="hidden" id="newMemberId"/>
+              <input type="hidden" id="newMemberName"/>
+              <input type="hidden" id="newMemberPhotoUrl"/>
+
+              <!-- Confirm Button -->
+              <button onclick="confirmChangeCollector()"
+                      style="width:100%;padding:11px;
+                             background:#1565c0;color:white;
+                             border:none;border-radius:8px;
+                             cursor:pointer;font-size:13px;
+                             font-weight:bold">
+                ✅ Confirm — Change to New Collector
+              </button>
+
+              <!-- Cancel Change -->
+              <button onclick="hideChangeCollector()"
+                      style="width:100%;padding:9px;
+                             background:#e5e7eb;color:#333;
+                             border:none;border-radius:8px;
+                             cursor:pointer;font-size:12px;
+                             margin-top:8px">
+                ✕ Cancel — Keep Current Collector
+              </button>
+
+              <p id="changeCollectorMsg"
+                 style="display:none;margin-top:10px;
+                        padding:10px;border-radius:8px;
+                        font-size:13px;font-weight:bold"></p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ENTITLEMENT TAB -->
+    <div id="entitlementTab" class="dash-tab-content"
+         style="display:none">
+      <div class="dash-card">
+
+        <!-- Category Banner -->
+        <div id="entitlementCategoryBanner"></div>
+
+        <!-- Stats Row -->
+        <div id="entitlementMembersBox"></div>
+
+        <!-- Food Grains Grid -->
+        <div id="entitlementGrainsGrid"></div>
+
+        <!-- Entitlement Bill -->
+        <div id="entitlementBillSection"></div>
+
+        <!-- Total Box -->
+        <div id="entitlementTotalBox"></div>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:10px;
+                    margin-top:16px;flex-wrap:wrap">
+          <button onclick="loadEntitlement()"
+                  style="background:#2e7d32;width:auto;
+                         padding:8px 20px;font-size:13px">
+            🔄 Refresh
+          </button>
+          <button onclick="printEntitlementBill()"
+                  style="background:#1565c0;width:auto;
+                         padding:8px 20px;font-size:13px">
+            🖨️ Print Bill
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- MY BILLS TAB — Shows actual bills from dealer -->
+    <div id="billsTab" class="dash-tab-content"
+         style="display:none">
+      <div class="dash-card">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;
+                    align-items:center;margin-bottom:4px;
+                    flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="color:#1b5e20;margin-bottom:4px;
+                       font-size:16px">
+              📄 My Distribution Bills
+            </h3>
+            <p style="font-size:12px;color:#888">
+              Bills generated by dealer based on
+              actual quantities collected at the shop
+            </p>
+          </div>
+          <button onclick="loadMyBills()"
+                  style="background:#2e7d32;width:auto;
+                         padding:8px 18px;font-size:13px">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <!-- Info Notice -->
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;
+                    border-radius:8px;padding:10px 14px;
+                    font-size:12px;color:#1e40af;
+                    margin-bottom:16px;line-height:1.6">
+          💡 Bills appear here after the dealer completes
+          your ration distribution and records payment
+          (Cash or PayPal). You can view item quantities,
+          amounts paid, and payment method.
+        </div>
+
+        <!-- Bills List -->
+        <div id="myBillsList">
+          <p style="color:#888;text-align:center;
+                    padding:30px">
+            ⏳ Loading your bills...
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- REPORT TAB -->
+    <div id="reportTab" class="dash-tab-content"
+         style="display:none">
+      <div class="dash-card">
+        <h3>📋 Submit Stock Report</h3>
+        <p style="color:#888;font-size:13px;
+                  margin-bottom:16px">
+          Report any shortage or issue with stock
+          at your ration shop
+        </p>
+        <label>Stock Item</label>
+        <select id="reportItem">
+          <option value="Rice">Rice</option>
+          <option value="Wheat">Wheat</option>
+          <option value="Sugar">Sugar</option>
+        </select>
+        <label style="margin-top:12px">
+          Quantity Received (kg)
+        </label>
+        <input id="reportQty" type="number"
+               placeholder="Enter quantity in kg"/>
+        <button id="submitReportBtn" class="primary-btn"
+                style="background:#e65100">
+          📤 Submit Report
+        </button>
+        <p id="reportMsg"
+           style="display:none;margin-top:12px;
+                  padding:10px;border-radius:8px;
+                  font-weight:bold"></p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ MEMBER DETAIL MODAL ═════════════════════════════════════ -->
+<div id="modalOverlay" style="display:none"></div>
+<div id="memberModal"  style="display:none">
+  <div id="modalContent"></div>
+  <button id="closeModal">Close</button>
+</div>
+
+</body>
+</html>

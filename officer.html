@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Ration Hub — Supply Officer Portal</title>
+  <link rel="stylesheet" href="officer.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="officer.js"></script>
+</head>
+<body>
+
+<!-- ══ LOGIN PAGE ═══════════════════════════════════════════════ -->
+<div id="officerLoginPage">
+  <div class="login-wrapper">
+    <div class="login-box">
+      <div class="login-logo">🏛️</div>
+      <h1>Supply Officer</h1>
+      <p class="login-sub">Smart Ration Hub 2026 — Kerala PDS</p>
+
+      <div class="input-group">
+        <label>Officer ID</label>
+        <input id="officerId" type="text"
+               placeholder="e.g. SO001"/>
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input id="officerPassword" type="password"
+               placeholder="Enter password"/>
+      </div>
+
+      <button id="officerLoginBtn">🔐 Login</button>
+
+      <p id="officerLoginError"
+         style="color:#c62828;display:none;
+                margin-top:12px;font-size:13px;
+                text-align:center">
+        ❌ Invalid Officer ID or Password
+      </p>
+
+      <div class="login-footer">
+        <a href="index.html">👤 Citizen Portal</a>
+        <a href="admin.html">🏪 Dealer Portal</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OFFICER DASHBOARD ═════════════════════════════════════════ -->
+<div id="officerDashboard" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="officer-avatar">🏛️</div>
+      <h2 id="officerName"></h2>
+      <p  id="officerDistrict"></p>
+      <span id="officerIdBadge"></span>
+    </div>
+
+    <nav>
+      <button onclick="showTab('overviewTab')"
+              class="active" id="btn-overviewTab">
+        📊 Overview
+      </button>
+      <button onclick="showTab('dealersTab')"
+              id="btn-dealersTab">
+        🏪 Manage Dealers
+      </button>
+      <button onclick="showTab('createDealerTab')"
+              id="btn-createDealerTab">
+        ➕ Create Dealer
+      </button>
+      <button onclick="showTab('stockTab')"
+              id="btn-stockTab">
+        📦 Stock Management
+      </button>
+      <button onclick="showTab('commodityTab')"
+              id="btn-commodityTab">
+        🛒 Manage Commodities
+      </button>
+      <button onclick="showTab('citizensTab')"
+              id="btn-citizensTab">
+        👥 Citizens
+      </button>
+      <button onclick="showTab('requestsTab')"
+              id="btn-requestsTab">
+        📋 Stock Requests
+      </button>
+      <button onclick="showTab('reportsTab')"
+              id="btn-reportsTab">
+        📈 Reports
+      </button>
+      <button onclick="showTab('inconvTab')"
+              id="btn-inconvTab">
+        🚨 Dealer Reports
+      </button>
+      <button onclick="showTab('closureTab')"
+              id="btn-closureTab">
+        🔴 Shop Closures
+      </button>
+      <button onclick="showTab('dealerNoticesTab')"
+              id="btn-dealerNoticesTab">
+        🚨 Dealer Notices
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button id="officerLogoutBtn">🚪 Logout</button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <h2 id="pageTitle">Overview</h2>
+      <div class="topbar-right">
+        <span id="currentDate"></span>
+        <span id="currentTime"></span>
+      </div>
+    </div>
+
+    <!-- ══ OVERVIEW TAB ══════════════════════════════════════════ -->
+    <div id="overviewTab" class="tab-content">
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card purple">
+          <div class="stat-icon">🏪</div>
+          <h3 id="totalDealers">0</h3>
+          <p>Total Dealers</p>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">👥</div>
+          <h3 id="totalCitizens">0</h3>
+          <p>Registered Citizens</p>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">🎫</div>
+          <h3 id="totalTokens">0</h3>
+          <p>Tokens Today</p>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">📦</div>
+          <h3 id="totalStock">0</h3>
+          <p>Total Stock (kg)</p>
+        </div>
+      </div>
+
+      <!-- Stock Overview Cards -->
+      <div class="overview-cards-row">
+        <div class="overview-card">
+          <h3>📦 Current Stock Levels</h3>
+          <div id="overviewStockGrid"></div>
+        </div>
+        <div class="overview-card">
+          <h3>🎫 Token Distribution Chart</h3>
+          <canvas id="overviewChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ DEALERS TAB ═══════════════════════════════════════════ -->
+    <div id="dealersTab" class="tab-content" style="display:none">
+      <div class="tab-header">
+        <h3>All Registered Dealers</h3>
+        <input id="dealerSearch" type="text"
+               placeholder="🔍 Search by ID, name or locality..."
+               oninput="filterDealers()"/>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Dealer ID</th>
+            <th>Shop Name</th>
+            <th>Locality</th>
+            <th>Role</th>
+            <th>📍 Location</th>
+            <th>Created</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="dealersTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ══ CREATE DEALER TAB ═════════════════════════════════════ -->
+    <div id="createDealerTab" class="tab-content"
+         style="display:none">
+      <div class="form-card">
+        <h3>➕ Create New Dealer Account</h3>
+        <p style="color:#888;font-size:13px;margin-bottom:24px">
+          Create login credentials for a new ration shop dealer.
+          The dealer will use these to access their dashboard.
+        </p>
+
+        <div class="form-grid">
+          <div class="input-group">
+            <label>Dealer ID</label>
+            <input id="newDealerId" type="text"
+                   placeholder="e.g. DEALER003"/>
+          </div>
+          <div class="input-group">
+            <label>Password</label>
+            <input id="newDealerPassword" type="text"
+                   placeholder="Min 6 characters"/>
+          </div>
+          <div class="input-group">
+            <label>Shop Name</label>
+            <input id="newShopName" type="text"
+                   placeholder="e.g. Kerala Ration Shop 3"/>
+          </div>
+          <div class="input-group">
+            <label>Locality / Area</label>
+            <input id="newLocality" type="text"
+                   placeholder="e.g. Thiruvalla"/>
+          </div>
+          <div class="input-group">
+            <label>Role</label>
+            <select id="newRole">
+              <option value="dealer">Dealer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="createDealerBtn">
+          ✅ Create Dealer Account
+        </button>
+        <p id="createDealerMsg"
+           style="display:none;margin-top:14px;
+                  padding:12px;border-radius:8px;
+                  font-weight:bold;font-size:14px"></p>
+      </div>
+    </div>
+
+    <!-- ══ STOCK MANAGEMENT TAB ══════════════════════════════════ -->
+    <div id="stockTab" class="tab-content" style="display:none">
+
+      <!-- Stock Cards -->
+      <div class="stock-cards-row" id="stockCardsRow"></div>
+
+      <!-- Update Stock Form -->
+      <div class="form-card" style="margin-top:24px">
+        <h3>🔄 Update Stock Levels</h3>
+        <p style="color:#888;font-size:13px;margin-bottom:20px">
+          Only Supply Officers can update stock levels.
+          Dealers must send a request to update their stock.
+        </p>
+        <div class="form-grid">
+          <div class="input-group">
+            <label>Stock Item</label>
+            <select id="updateItem">
+              <option value="Rice">🌾 Rice</option>
+              <option value="Wheat">🌿 Wheat</option>
+              <option value="Sugar">🍬 Sugar</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>New Quantity (kg)</label>
+            <input id="updateQty" type="number"
+                   placeholder="Enter new quantity in kg"/>
+          </div>
+        </div>
+        <button id="updateStockBtn">
+          📦 Update Stock
+        </button>
+        <p id="stockUpdateMsg"
+           style="display:none;margin-top:14px;
+                  padding:12px;border-radius:8px;
+                  font-weight:bold;font-size:14px"></p>
+      </div>
+
+    </div>
+
+    <!-- ══ CITIZENS TAB ══════════════════════════════════════════ -->
+    <div id="citizensTab" class="tab-content" style="display:none">
+      <div class="tab-header">
+        <h3>All Registered Citizens</h3>
+        <input id="citizenSearch" type="text"
+               placeholder="🔍 Search by ration card..."
+               oninput="filterCitizens()"/>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ration Card</th>
+            <th>Category</th>
+            <th>Members</th>
+            <th>Photo</th>
+            <th>Registered</th>
+          </tr>
+        </thead>
+        <tbody id="citizensTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ══ STOCK REQUESTS TAB ════════════════════════════════════ -->
+    <div id="requestsTab" class="tab-content" style="display:none">
+      <div class="tab-header">
+        <h3>Stock Requests from Dealers</h3>
+        <button onclick="loadStockRequests()"
+                class="refresh-btn">
+          🔄 Refresh
+        </button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Dealer</th>
+            <th>Shop</th>
+            <th>Item</th>
+            <th>Qty (kg)</th>
+            <th>Priority</th>
+            <th>Note</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="requestsTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ══ REPORTS TAB ═══════════════════════════════════════════ -->
+    <div id="reportsTab" class="tab-content" style="display:none">
+      <div class="reports-grid">
+
+        <!-- Bills Summary -->
+        <div class="report-card">
+          <h3>🧾 Bills Generated</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Bill No.</th>
+                <th>Ration Card</th>
+                <th>Month</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody id="billsTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Citizen Reports -->
+        <div class="report-card">
+          <h3>📋 Citizen Reports</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Ration Card</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="citizenReportsBody"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── COMMODITY MANAGEMENT TAB ──────────────────────────── -->
+    <div id="commodityTab" class="tab-pane" style="display:none">
+      <div class="section-card">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;
+                    align-items:center;margin-bottom:4px;
+                    flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="color:#1b5e20;font-size:16px;
+                       margin-bottom:4px">
+              🛒 Commodity Management
+            </h3>
+            <p style="font-size:12px;color:#888">
+              Add new commodities to the stock board.
+              Set name, govt price, market price and
+              available quantity. Citizens see these on
+              their dashboard stock board.
+            </p>
+          </div>
+          <button onclick="loadCommodities()"
+                  style="background:#2e7d32;width:auto;
+                         padding:8px 18px;font-size:13px">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <!-- Add New Commodity Form -->
+        <div style="background:#f0fdf4;
+                    border:2px solid #2e7d32;
+                    border-radius:14px;padding:20px;
+                    margin-bottom:20px;margin-top:16px">
+
+          <div style="font-size:14px;font-weight:bold;
+                      color:#1b5e20;margin-bottom:16px;
+                      display:flex;align-items:center;
+                      gap:8px">
+            ➕ Add New Commodity to Stock Board
+          </div>
+
+          <div style="display:grid;
+                      grid-template-columns:1fr 1fr;
+                      gap:14px;margin-bottom:14px">
+
+            <!-- Commodity Name -->
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                🏷️ Commodity Name *
+              </label>
+              <input type="text" id="newCommodityName"
+                     placeholder="e.g. Kerosene, Dal, Oil..."
+                     style="border-color:#2e7d32"
+                     oninput="updateCommodityPreview()"/>
+            </div>
+
+            <!-- Unit -->
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                📏 Unit of Measurement *
+              </label>
+              <select id="newCommodityUnit"
+                      style="border-color:#2e7d32">
+                <option value="kg">kg (Kilograms)</option>
+                <option value="litre">litre (Litres)</option>
+                <option value="g">g (Grams)</option>
+                <option value="ml">ml (Millilitres)</option>
+                <option value="piece">piece (Pieces)</option>
+                <option value="packet">packet (Packets)</option>
+                <option value="bundle">bundle (Bundles)</option>
+              </select>
+            </div>
+
+            <!-- Govt Price -->
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                💚 Govt. Price (₹ per unit) *
+              </label>
+              <input type="number" id="newCommodityGovtPrice"
+                     placeholder="e.g. 15"
+                     min="0" step="0.01"
+                     style="border-color:#2e7d32"
+                     oninput="updateCommodityPreview()"/>
+            </div>
+
+            <!-- Market Price -->
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                🏪 Market Price (₹ per unit) *
+              </label>
+              <input type="number" id="newCommodityMarketPrice"
+                     placeholder="e.g. 80"
+                     min="0" step="0.01"
+                     style="border-color:#2e7d32"
+                     oninput="updateCommodityPreview()"/>
+            </div>
+
+            <!-- Available Quantity -->
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                📦 Available Quantity (in units) *
+              </label>
+              <input type="number" id="newCommodityQty"
+                     placeholder="e.g. 100"
+                     min="0" step="0.01"
+                     style="border-color:#2e7d32"
+                     oninput="updateCommodityPreview()"/>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                📝 Description (optional)
+              </label>
+              <input type="text" id="newCommodityDesc"
+                     placeholder="e.g. Edible oil for BPL families"
+                     style="border-color:#2e7d32"/>
+            </div>
+          </div>
+
+          <!-- Photo Upload -->
+          <div style="margin-bottom:14px">
+            <label style="font-size:12px;font-weight:bold;
+                          color:#555;display:block;
+                          margin-bottom:5px">
+              📷 Commodity Photo (optional)
+            </label>
+            <div style="display:flex;gap:12px;
+                        align-items:center;flex-wrap:wrap">
+              <div style="flex:1;min-width:200px">
+                <input type="file"
+                       id="newCommodityPhoto"
+                       accept="image/*"
+                       onchange="previewCommodityPhoto(this)"
+                       style="border:1.5px dashed #2e7d32;
+                              padding:10px;
+                              background:#f0fdf4;
+                              border-radius:8px;
+                              cursor:pointer"/>
+                <p style="font-size:11px;color:#888;
+                          margin-top:4px">
+                  Accepts: JPG, PNG, WebP.
+                  Photo shown on citizen stock board.
+                </p>
+              </div>
+              <div id="commodityPhotoPreview"
+                   style="display:none;flex-shrink:0">
+                <img id="commodityPhotoImg"
+                     src="" alt="Preview"
+                     style="width:80px;height:80px;
+                            border-radius:10px;
+                            object-fit:cover;
+                            border:2px solid #2e7d32"/>
+                <p style="font-size:10px;color:#15803d;
+                          text-align:center;margin-top:4px">
+                  ✅ Ready
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preview Card -->
+          <div id="commodityPreview"
+               style="display:none;
+                      background:white;
+                      border:1px solid #bbf7d0;
+                      border-radius:10px;
+                      padding:14px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:bold;
+                        color:#555;margin-bottom:8px">
+              👁️ Preview — How it will appear on Stock Board:
+            </div>
+            <div style="display:flex;align-items:center;
+                        gap:14px;padding:10px;
+                        background:#f9fafb;border-radius:8px">
+              <div style="font-size:36px" id="prevIcon">📦</div>
+              <div style="flex:1">
+                <div style="font-size:16px;font-weight:bold;
+                            color:#1b5e20"
+                     id="prevName">—</div>
+                <div style="font-size:12px;color:#555;
+                            margin-top:4px">
+                  Available: <strong id="prevQty">—</strong>
+                  | Govt: <strong id="prevGovt" style="color:#15803d">—</strong>
+                  | Market: <strong id="prevMkt" style="color:#aaa;text-decoration:line-through">—</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Button -->
+          <button onclick="addNewCommodity()"
+                  style="background:linear-gradient(135deg,
+                         #1b5e20,#2e7d32);color:white;
+                         padding:13px;font-size:14px;
+                         font-weight:bold;border:none;
+                         border-radius:10px;cursor:pointer;
+                         width:100%">
+            ✅ Add Commodity to Stock Board
+          </button>
+
+          <p id="commodityMsg"
+             style="display:none;margin-top:12px;
+                    padding:12px;border-radius:8px;
+                    font-size:13px;font-weight:bold"></p>
+        </div>
+
+        <!-- Existing Commodities List -->
+        <div style="font-size:14px;font-weight:bold;
+                    color:#333;margin-bottom:14px">
+          📋 All Commodities on Stock Board
+        </div>
+        <div id="commodityList">
+          <p style="color:#888;text-align:center;padding:30px">
+            ⏳ Loading commodities...
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── DEALER INCONVENIENCE REVIEW TAB ─────────────────── -->
+    <div id="inconvTab" class="tab-pane" style="display:none">
+      <div class="section-card">
+
+        <div style="display:flex;justify-content:space-between;
+                    align-items:center;margin-bottom:4px;
+                    flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="color:#b91c1c;font-size:16px;
+                       margin-bottom:4px">
+              🚨 Dealer Inconvenience Reports
+            </h3>
+            <p style="font-size:12px;color:#888">
+              Review dealer reports. Approve to send closure
+              notice to all citizens automatically.
+            </p>
+          </div>
+          <button onclick="loadDealerInconveniences()"
+                  style="background:#2e7d32;width:auto;
+                         padding:8px 18px;font-size:13px">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <!-- Filter tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;
+                    margin-top:14px;flex-wrap:wrap">
+          <button onclick="filterInconv('all')"
+                  id="inconvFilterAll"
+                  style="background:#1b5e20;color:white;
+                         width:auto;padding:7px 16px;
+                         font-size:12px;border-radius:20px">
+            All
+          </button>
+          <button onclick="filterInconv('pending')"
+                  id="inconvFilterPending"
+                  style="background:#e5e7eb;color:#333;
+                         width:auto;padding:7px 16px;
+                         font-size:12px;border-radius:20px">
+            ⏳ Pending
+          </button>
+          <button onclick="filterInconv('approved')"
+                  id="inconvFilterApproved"
+                  style="background:#e5e7eb;color:#333;
+                         width:auto;padding:7px 16px;
+                         font-size:12px;border-radius:20px">
+            ✅ Approved
+          </button>
+          <button onclick="filterInconv('rejected')"
+                  id="inconvFilterRejected"
+                  style="background:#e5e7eb;color:#333;
+                         width:auto;padding:7px 16px;
+                         font-size:12px;border-radius:20px">
+            ❌ Rejected
+          </button>
+        </div>
+
+        <!-- Reports List -->
+        <div id="dealerInconvList">
+          <p style="color:#888;text-align:center;padding:30px">
+            ⏳ Loading dealer reports...
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── SHOP CLOSURE TAB ────────────────────────────────────── -->
+    <div id="closureTab" class="tab-pane" style="display:none">
+      <div class="section-card">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;
+                    align-items:center;margin-bottom:16px;
+                    flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="color:#b91c1c;font-size:16px;
+                       margin-bottom:4px">
+              🔴 Shop Closure Notifications
+            </h3>
+            <p style="font-size:12px;color:#888">
+              Mark any shop as closed. Citizens,
+              dealers and officers will see the notice.
+            </p>
+          </div>
+          <button onclick="loadShopClosures();
+                           loadDealersForClosure()"
+                  style="background:#2e7d32;width:auto;
+                         padding:8px 18px;font-size:13px">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <!-- Add Closure Form -->
+        <div style="background:#fff5f5;border:1px solid #fca5a5;
+                    border-radius:12px;padding:18px;
+                    margin-bottom:20px">
+          <div style="font-size:14px;font-weight:bold;
+                      color:#b91c1c;margin-bottom:14px">
+            ➕ Add New Shop Closure Notice
+          </div>
+
+          <div style="display:grid;
+                      grid-template-columns:1fr 1fr;
+                      gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                🏪 Select Shop
+              </label>
+              <select id="closureDealerId">
+                <option value="">-- Select Shop --</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:bold;
+                            color:#555;display:block;
+                            margin-bottom:5px">
+                📅 Closure Date
+              </label>
+              <input type="date" id="closureDate"/>
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;font-weight:bold;
+                          color:#555;display:block;
+                          margin-bottom:5px">
+              📋 Reason for Closure
+            </label>
+            <select id="closureReason"
+                    style="width:100%">
+              <option value="">-- Select Reason --</option>
+              <option value="Public Holiday">
+                🎉 Public Holiday
+              </option>
+              <option value="Stock Unavailable">
+                📦 Stock Unavailable
+              </option>
+              <option value="Dealer Sick">
+                🤒 Dealer Sick / Personal Emergency
+              </option>
+              <option value="Shop Maintenance">
+                🔧 Shop Maintenance / Repair
+              </option>
+              <option value="Government Order">
+                🏛️ Government Order / Bandh
+              </option>
+              <option value="Natural Disaster">
+                🌧️ Natural Disaster / Flood
+              </option>
+              <option value="Power Outage">
+                ⚡ Power Outage
+              </option>
+              <option value="Other">
+                📝 Other
+              </option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:14px">
+            <label style="font-size:12px;font-weight:bold;
+                          color:#555;display:block;
+                          margin-bottom:5px">
+              💬 Message to Citizens (optional)
+            </label>
+            <input type="text" id="closureMessage"
+                   placeholder="e.g. Shop will reopen tomorrow.
+                   Sorry for the inconvenience."/>
+          </div>
+
+          <button onclick="addShopClosure()"
+                  style="background:#b91c1c;color:white;
+                         width:100%;padding:12px;
+                         font-size:14px;font-weight:bold;
+                         border:none;border-radius:8px;
+                         cursor:pointer">
+            🔴 Post Shop Closure Notice
+          </button>
+
+          <p id="closureMsg"
+             style="display:none;margin-top:10px;
+                    padding:10px;border-radius:8px;
+                    font-size:13px;font-weight:bold"></p>
+        </div>
+
+        <!-- Active Closures List -->
+        <div style="font-size:14px;font-weight:bold;
+                    color:#333;margin-bottom:12px">
+          📋 Active Closure Notices
+        </div>
+        <div id="closureList">
+          <p style="color:#888;text-align:center;
+                    padding:20px">
+            ⏳ Loading...
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ DEALER NOTICES TAB ══════════════════════════════════════ -->
+    <div id="dealerNoticesTab" class="tab-pane"
+         style="display:none">
+      <div class="section-card">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;
+                    align-items:center;margin-bottom:16px;
+                    flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="color:#b91c1c;font-size:16px;
+                       margin-bottom:4px">
+              🚨 Dealer Inconvenience Reports
+            </h3>
+            <p style="font-size:12px;color:#888">
+              Review dealer-reported issues. Add your note
+              and publish to all citizen dashboards.
+            </p>
+          </div>
+          <button onclick="loadDealerNoticesForOfficer()"
+                  style="background:#2e7d32;color:white;
+                         width:auto;padding:8px 18px;
+                         font-size:13px;border:none;
+                         border-radius:8px;cursor:pointer">
+            🔄 Refresh
+          </button>
+        </div>
+
+        <!-- Filter -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;
+                    flex-wrap:wrap">
+          <select id="noticeFilter"
+                  onchange="loadDealerNoticesForOfficer()"
+                  style="width:auto;padding:8px 12px;
+                         border:1.5px solid #e0e0e0;
+                         border-radius:8px;font-size:13px">
+            <option value="all">All Reports</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="reviewed">🔍 Reviewed</option>
+            <option value="published">✅ Published</option>
+            <option value="rejected">❌ Rejected</option>
+          </select>
+        </div>
+
+        <!-- Notices List -->
+        <div id="officerNoticesList">
+          <p style="color:#888;text-align:center;padding:30px">
+            ⏳ Loading dealer reports...
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+<!-- ══ DEALER DETAIL MODAL ══════════════════════════════════════ -->
+<div id="dealerModalOverlay" style="display:none">
+  <div id="dealerDetailModal">
+    <h3>🏪 Dealer Details</h3>
+    <div id="dealerDetailContent"></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button id="closeDealerModal"
+              onclick="closeDealerModal()"
+              style="background:#c62828;width:auto">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

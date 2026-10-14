@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Ration Hub — Dealer Dashboard</title>
+  <link rel="stylesheet" href="admin.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <script defer src="admin.js"></script>
+</head>
+<body>
+
+<!-- ══ DEALER LOGIN PAGE ════════════════════════════════════════ -->
+<div id="dealerLoginPage">
+  <div class="login-box">
+    <div class="login-icon">🏪</div>
+    <h1>Dealer Login</h1>
+    <p>Smart Ration Hub 2026</p>
+    <input id="dealerId"       type="text"
+           placeholder="Dealer ID (e.g. DEALER001)"/>
+    <input id="dealerPassword" type="password"
+           placeholder="Password"/>
+    <button id="dealerLoginBtn">🔐 Login</button>
+    <p id="dealerLoginError"
+       style="color:red;display:none;margin-top:10px">
+      ❌ Invalid credentials
+    </p>
+    <div class="login-links">
+      <a href="index.html">👤 Citizen Portal</a>
+      <a href="officer.html">🏛️ Officer Portal</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DEALER DASHBOARD ══════════════════════════════════════════ -->
+<div id="dashboardPage" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="shop-icon">🏪</div>
+      <h2 id="shopName"></h2>
+      <p  id="shopLocality"></p>
+    </div>
+    <nav>
+      <button onclick="showTab('overviewTab')"
+              class="active" id="btn-overviewTab">
+        📊 Overview
+      </button>
+      <button onclick="showTab('membersTab')"
+              id="btn-membersTab">
+        👥 Members
+      </button>
+      <button onclick="showTab('tokenTab')"
+              id="btn-tokenTab">
+        🎫 Token Queue
+      </button>
+      <button onclick="showTab('rationTab')"
+              id="btn-rationTab">
+        🌾 Monthly Ration
+      </button>
+      <button onclick="showTab('stockTab')"
+              id="btn-stockTab">
+        📦 Stock Levels
+      </button>
+      <button onclick="showTab('officerTab')"
+              id="btn-officerTab">
+        📞 Contact Officer
+      </button>
+      <button onclick="showTab('inconvenienceTab')"
+              id="btn-inconvenienceTab">
+        🚨 Report Inconvenience
+      </button>
+      <button onclick="showTab('reportsTab')"
+              id="btn-reportsTab">
+        📋 Reports
+      </button>
+      <button onclick="showTab('inconvenienceTab')"
+              id="btn-inconvenienceTab">
+        🚨 My Inconvenience
+      </button>
+    </nav>
+    <div class="dealer-badge">
+      <span id="dealerRoleBadge"></span>
+      <span id="dealerIdDisplay"></span>
+    </div>
+    <button id="dealerLogoutBtn">🚪 Logout</button>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+      <h2 id="pageTitle">Overview</h2>
+      <div class="topbar-right">
+        <span id="currentDate"></span>
+        <span id="currentTime"></span>
+      </div>
+    </div>
+
+    <!-- ── OVERVIEW TAB ──────────────────────────────────────── -->
+    <div id="overviewTab" class="tab-content">
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-icon">👥</div>
+          <h3 id="totalMembers">0</h3>
+          <p>Total Members</p>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">🪪</div>
+          <h3 id="totalCards">0</h3>
+          <p>Ration Cards</p>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-icon">🎫</div>
+          <h3 id="todayTokens">0</h3>
+          <p>Tokens Today</p>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">⏳</div>
+          <h3 id="pendingTokens">0</h3>
+          <p>Pending</p>
+        </div>
+      </div>
+      <div class="chart-box">
+        <h3>Today's Token Status</h3>
+        <canvas id="overviewChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── MEMBERS TAB ───────────────────────────────────────── -->
+    <div id="membersTab" class="tab-content" style="display:none">
+      <div class="tab-header">
+        <h3>Registered Members</h3>
+        <input id="memberSearch" type="text"
+               placeholder="🔍 Search name or ration card..."
+               oninput="filterMembers()"/>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ration Card</th>
+            <th>Category</th>
+            <th>Members</th>
+            <th>Photo</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="membersTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ── TOKEN QUEUE TAB ───────────────────────────────────── -->
+    <!-- NOTE: No assign token here — citizens book their own token -->
+    <div id="tokenTab" class="tab-content" style="display:none">
+
+      <!-- Info note -->
+      <div class="info-note">
+        ℹ️ Citizens book their own tokens from the citizen portal.
+        Your job is to serve the queue below.
+      </div>
+
+      <!-- Now Serving Banner -->
+      <div class="now-serving-banner" id="nowServingBanner"
+           style="display:none">
+        <div class="serving-left">
+          <span class="serving-label">🔊 NOW SERVING</span>
+          <h1 id="nowServingToken">—</h1>
+        </div>
+        <div class="serving-right">
+          <p id="servingRationCard"></p>
+          <p id="servingCategory"></p>
+          <p id="servingTime"></p>
+        </div>
+      </div>
+
+      <!-- Queue Stats -->
+      <div class="queue-stats-row">
+        <div class="q-stat-box waiting">
+          <h3 id="waitingCount">0</h3>
+          <p>⏳ Waiting</p>
+        </div>
+        <div class="q-stat-box serving">
+          <h3 id="servingCount">0</h3>
+          <p>🔵 Serving</p>
+        </div>
+        <div class="q-stat-box completed">
+          <h3 id="doneCount">0</h3>
+          <p>✅ Completed</p>
+        </div>
+        <div class="q-stat-box cancelled">
+          <h3 id="cancelledCount">0</h3>
+          <p>❌ Cancelled</p>
+        </div>
+      </div>
+
+      <!-- Token Table -->
+      <div class="table-box">
+        <div class="table-header">
+          <h3>📋 Today's Token Queue</h3>
+          <button onclick="loadTokenQueue()"
+                  class="refresh-btn">
+            🔄 Refresh
+          </button>
+        </div>
+        <table id="tokenTable">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Queue</th>
+              <th>Ration Card</th>
+              <th>Category</th>
+              <th>👤 Collector</th>
+              <th>📷 Photo</th>
+              <th>Booked At</th>
+              <th>Est. Time</th>
+              <th>Status</th>
+              <th>Action</th>
+          </thead>
+          <tbody id="tokenTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── MONTHLY RATION TAB ─────────────────────────────────── -->
+    <div id="rationTab" class="tab-content" style="display:none">
+      <div class="tab-header">
+        <h3>Monthly Ration Distribution</h3>
+        <div class="filter-row">
+          <select id="filterMonth">
+            <option value="January">January</option>
+            <option value="February">February</option>
+            <option value="March">March</option>
+            <option value="April">April</option>
+            <option value="May">May</option>
+            <option value="June">June</option>
+            <option value="July">July</option>
+            <option value="August" selected>August</option>
+            <option value="September">September</option>
+            <option value="October">October</option>
+            <option value="November">November</option>
+            <option value="December">December</option>
+          </select>
+          <select id="filterYear">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+          </select>
+          <button onclick="loadRationData()">Load</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ration Card</th>
+            <th>Category</th>
+            <th>Rice</th>
+            <th>Wheat</th>
+            <th>Sugar</th>
+            <th>Total ₹</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="rationTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- ── STOCK LEVELS TAB ───────────────────────────────────── -->
+    <!-- Dealer can VIEW stock but CANNOT update directly -->
+    <!-- Must contact Supply Officer to update stock -->
+    <div id="stockTab" class="tab-content" style="display:none">
+
+      <div class="info-note" style="background:#fef9c3;
+           border-color:#fde68a;color:#a16207">
+        ℹ️ Stock levels are updated by the Supply Officer only.
+        To request a stock update, go to
+        <strong>Contact Officer</strong> tab.
+      </div>
+
+      <h3 style="margin-bottom:16px;color:#2e7d32">
+        Current Stock Levels
+      </h3>
+      <div class="stock-view-grid" id="stockGrid"></div>
+    </div>
+
+    <!-- ── CONTACT OFFICER TAB ───────────────────────────────── -->
+    <!-- Replaces the old "Assign Token" / "Update Stock" feature -->
+    <div id="officerTab" class="tab-content" style="display:none">
+
+      <!-- Officer Info Card -->
+      <div class="officer-info-card" id="officerInfoCard">
+        <div class="officer-info-loading">
+          ⏳ Loading officer details...
+        </div>
+      </div>
+
+      <!-- Stock Request Form -->
+      <div class="contact-card">
+        <h3>📦 Request Stock Refill</h3>
+        <p style="color:#888;font-size:13px;margin-bottom:18px">
+          Send a stock refill request to the Supply Officer.
+          They will update the stock levels after review.
+        </p>
+        <div class="request-form">
+          <div class="form-row">
+            <label>Stock Item</label>
+            <select id="requestItem">
+              <option value="Rice">🌾 Rice</option>
+              <option value="Wheat">🌿 Wheat</option>
+              <option value="Sugar">🍬 Sugar</option>
+              <option value="All Items">📦 All Items</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Quantity Needed (kg)</label>
+            <input id="requestQty" type="number"
+                   placeholder="e.g. 50"/>
+          </div>
+          <div class="form-row">
+            <label>Reason / Note</label>
+            <textarea id="requestNote"
+                      placeholder="e.g. Current stock is critically low. Need immediate refill."
+                      rows="3"></textarea>
+          </div>
+          <div class="form-row">
+            <label>Priority</label>
+            <select id="requestPriority">
+              <option value="Normal">🟢 Normal</option>
+              <option value="Urgent">🟡 Urgent</option>
+              <option value="Critical">🔴 Critical</option>
+            </select>
+          </div>
+          <button id="sendRequestBtn"
+                  class="request-btn">
+            📤 Send Stock Request to Officer
+          </button>
+          <p id="requestMsg" style="display:none;
+             margin-top:14px;padding:12px;border-radius:8px;
+             font-weight:bold;font-size:14px"></p>
+        </div>
+      </div>
+
+      <!-- Past Requests -->
+      <div class="contact-card" style="margin-top:20px">
+        <div class="table-header" style="padding:0 0 16px">
+          <h3>📋 My Stock Requests</h3>
+          <button onclick="loadMyRequests()"
+                  class="refresh-btn">
+            🔄 Refresh
+          </button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Item</th>
+              <th>Qty (kg)</th>
+              <th>Priority</th>
+              <th>Note</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="requestsTableBody"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- ── DEALER INCONVENIENCE TAB ────────────────────────────── -->
+    <div id="inconvenienceTab" class="tab-content" style="display:none">
+
+      <!-- Info Box -->
+      <div class="info-note" style="background:#fff5f5;
+           border-color:#fca5a5;color:#b91c1c;
+           margin-bottom:18px">
+        🚨 Use this to inform the Supply Officer if you have
+        any inconvenience that may affect ration distribution.
+        The officer will review and notify all citizens.
+      </div>
+
+      <!-- Report Form -->
+      <div class="contact-card">
+        <h3 style="color:#b91c1c">🚨 Report My Inconvenience</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:18px">
+          Your report will be sent to the Supply Officer for
+          approval. Once approved, a notice will be displayed
+          on all dashboards automatically.
+        </p>
+
+        <div class="request-form">
+
+          <!-- Affected Date -->
+          <div class="form-row">
+            <label>📅 Date Affected</label>
+            <input type="date" id="inconvDate"
+                   min=""/>
+          </div>
+
+          <!-- Reason -->
+          <div class="form-row">
+            <label>📋 Reason for Inconvenience</label>
+            <select id="inconvReason">
+              <option value="">-- Select Reason --</option>
+              <option value="Health Issue / Sick">
+                🤒 Health Issue / Sick
+              </option>
+              <option value="Family Emergency">
+                🚨 Family Emergency
+              </option>
+              <option value="Shop Maintenance">
+                🔧 Shop Under Maintenance / Repair
+              </option>
+              <option value="Stock Not Received">
+                📦 Stock Not Yet Received
+              </option>
+              <option value="Power Outage">
+                ⚡ Power Outage at Shop
+              </option>
+              <option value="Natural Disaster / Flood">
+                🌧️ Natural Disaster / Flood / Rain
+              </option>
+              <option value="Personal Emergency">
+                🏥 Personal Emergency
+              </option>
+              <option value="Government Holiday">
+                🏛️ Government Holiday / Bandh
+              </option>
+              <option value="Other">
+                📝 Other Reason
+              </option>
+            </select>
+          </div>
+
+          <!-- Message -->
+          <div class="form-row">
+            <label>💬 Message to Officer & Citizens</label>
+            <textarea id="inconvMessage" rows="3"
+                      placeholder="e.g. I am unable to open the shop today due to illness. Will resume tomorrow."></textarea>
+          </div>
+
+          <!-- Submit -->
+          <button onclick="submitInconvenience()"
+                  style="background:linear-gradient(135deg,
+                         #b91c1c,#c62828);color:white;
+                         padding:13px;font-size:14px">
+            📤 Send Report to Supply Officer
+          </button>
+
+          <p id="inconvMsg"
+             style="display:none;margin-top:12px;
+                    padding:12px;border-radius:8px;
+                    font-size:13px;font-weight:bold"></p>
+        </div>
+      </div>
+
+      <!-- My Previous Reports -->
+      <div class="contact-card" style="margin-top:18px">
+        <div class="table-header" style="padding:0 0 16px">
+          <h3>📋 My Inconvenience Reports</h3>
+          <button onclick="loadMyInconveniences()"
+                  class="refresh-btn">
+            🔄 Refresh
+          </button>
+        </div>
+        <div id="myInconvList">
+          <p style="color:#888;text-align:center;padding:20px">
+            ⏳ Loading...
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── REPORTS TAB ───────────────────────────────────────── -->
+    <div id="reportsTab" class="tab-content" style="display:none">
+      <div class="tab-header">
+        <h3>Stock Reports from Citizens</h3>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ration Card</th>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="reportsTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ INCONVENIENCE TAB ══════════════════════════════════════ -->
+<div id="inconvenienceTab" class="tab-content" style="display:none">
+
+  <!-- Header -->
+  <div style="background:white;border-radius:14px;
+              padding:20px 24px;margin-bottom:18px;
+              box-shadow:0 2px 8px rgba(0,0,0,0.08);
+              border-left:5px solid #b91c1c">
+    <h3 style="color:#b91c1c;font-size:16px;margin-bottom:6px">
+      🚨 Report Inconvenience / Shop Problem
+    </h3>
+    <p style="font-size:12px;color:#888;line-height:1.6">
+      If you are unable to open the shop or have any issue,
+      report here. Your message will be sent to the Supply
+      Officer who will review and publish a notice to
+      all citizens on their dashboard.
+    </p>
+  </div>
+
+  <!-- Report Form -->
+  <div style="background:white;border-radius:14px;
+              padding:22px 24px;margin-bottom:18px;
+              box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+    <h3 style="color:#1b5e20;font-size:14px;
+               margin-bottom:16px;padding-bottom:10px;
+               border-bottom:1px solid #f0f0f0">
+      📋 Submit New Inconvenience Report
+    </h3>
+
+    <!-- Date -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:bold;
+                    color:#555;display:block;margin-bottom:5px">
+        📅 Date of Issue
+      </label>
+      <input type="date" id="noticeDate"/>
+    </div>
+
+    <!-- Reason -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:bold;
+                    color:#555;display:block;margin-bottom:5px">
+        📋 Reason / Type of Issue
+      </label>
+      <select id="noticeReason">
+        <option value="">-- Select Reason --</option>
+        <option value="Dealer is sick">
+          🤒 Dealer is sick / Medical emergency
+        </option>
+        <option value="Stock unavailable">
+          📦 Stock unavailable / Not received
+        </option>
+        <option value="Shop under maintenance">
+          🔧 Shop under maintenance / Repair
+        </option>
+        <option value="Power outage">
+          ⚡ Power outage / No electricity
+        </option>
+        <option value="Personal emergency">
+          🆘 Personal / Family emergency
+        </option>
+        <option value="Government holiday">
+          🎉 Government holiday / Bandh
+        </option>
+        <option value="Natural disaster">
+          🌧️ Natural disaster / Flood / Rain
+        </option>
+        <option value="Transport issue">
+          🚚 Transport issue / Stock delivery delayed
+        </option>
+        <option value="Other">
+          📝 Other reason
+        </option>
+      </select>
+    </div>
+
+    <!-- Message -->
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:bold;
+                    color:#555;display:block;margin-bottom:5px">
+        💬 Detailed Message to Officer
+      </label>
+      <textarea id="noticeMessage" rows="3"
+                placeholder="Explain the situation in detail.
+e.g. I am suffering from fever and cannot open the shop today.
+Will resume from tomorrow."></textarea>
+    </div>
+
+    <!-- Expected Reopen -->
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;font-weight:bold;
+                    color:#555;display:block;margin-bottom:5px">
+        📅 Expected Reopening Date
+      </label>
+      <input type="date" id="noticeReopenDate"/>
+    </div>
+
+    <!-- Submit Button -->
+    <button onclick="submitDealerNotice()"
+            style="background:#b91c1c;color:white;
+                   width:100%;padding:12px;font-size:14px;
+                   font-weight:bold;border:none;
+                   border-radius:8px;cursor:pointer">
+      📤 Send Report to Supply Officer
+    </button>
+    <p id="noticeSubmitMsg"
+       style="display:none;margin-top:10px;padding:10px;
+              border-radius:8px;font-weight:bold;
+              font-size:13px"></p>
+  </div>
+
+  <!-- My Past Reports -->
+  <div style="background:white;border-radius:14px;
+              padding:22px 24px;
+              box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+    <div style="display:flex;justify-content:space-between;
+                align-items:center;margin-bottom:16px;
+                padding-bottom:10px;
+                border-bottom:1px solid #f0f0f0">
+      <h3 style="color:#1b5e20;font-size:14px">
+        📋 My Submitted Reports
+      </h3>
+      <button onclick="loadMyDealerNotices()"
+              style="background:#2e7d32;color:white;
+                     width:auto;padding:6px 14px;
+                     font-size:12px;border-radius:6px">
+        🔄 Refresh
+      </button>
+    </div>
+    <div id="myNoticesList">
+      <p style="color:#888;text-align:center;padding:20px">
+        ⏳ Loading...
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ MEMBER DETAIL MODAL ══════════════════════════════════════ -->
+<div id="memberModalOverlay" style="display:none">
+  <div id="memberDetailModal">
+    <h3>👥 Household Details</h3>
+    <div id="memberDetailContent"></div>
+    <button onclick="closeMemberModal()">Close</button>
+  </div>
+</div>
+
+<!-- ══ FACE SCANNER MODAL — 3 STEP VERIFICATION ══════════════════ -->
+<div id="faceScanOverlay" style="display:none">
+  <div id="faceScanModal">
+
+    <!-- Header -->
+    <div class="scan-header">
+      <h3>🔐 Ration Distribution Verification</h3>
+      <p id="scanRationCardLabel"></p>
+    </div>
+
+    <!-- Step Indicators -->
+    <div id="stepIndicators" class="step-indicators"
+         style="display:none">
+      <div class="step-indicator step-active" id="step1">
+        <div class="step-circle">1</div>
+        <div class="step-label">📍 Geo<br/>Location</div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" id="step2">
+        <div class="step-circle">2</div>
+        <div class="step-label">📷 Face<br/>Scan</div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-indicator" id="step3">
+        <div class="step-circle">3</div>
+        <div class="step-label">📱 OTP<br/>Verify</div>
+      </div>
+    </div>
+
+    <!-- ── STEP 1: GEO LOCATION SECTION ─────────────────── -->
+    <div id="geoSection" style="display:none">
+      <div class="step-section-title">
+        📍 Step 1 — Geo-Location Verification
+      </div>
+      <p style="font-size:12px;color:#888;margin-bottom:14px">
+        System logs your location for officer audit.
+        Location info is shown for reference only.
+        Verification always proceeds — laptop GPS
+        inaccuracy does not block ration distribution.
+      </p>
+
+      <!-- Status Box -->
+      <div id="geoStatus" class="scan-status-box">
+        ⏳ Getting your location...
+      </div>
+
+      <!-- Geo Info Table -->
+      <div class="geo-info-box" id="geoInfoBox"
+           style="display:none">
+        <div class="geo-info-row">
+          <span>📱 Your Current Location:</span>
+          <span id="dealerLatLon" style="font-size:11px">—</span>
+        </div>
+        <div class="geo-info-row">
+          <span>🏪 Registered Shop Location:</span>
+          <span id="shopLatLon" style="font-size:11px">—</span>
+        </div>
+        <div class="geo-info-row">
+          <span>📏 Distance from Shop:</span>
+          <span id="geoDistance">—</span>
+        </div>
+        <div class="geo-info-row">
+          <span>📡 GPS Accuracy:</span>
+          <span id="geoAccuracy">—</span>
+        </div>
+        <div class="geo-info-row">
+          <span>✅ Allowed Range:</span>
+          <span style="color:#15803d;font-weight:bold">
+            Within 2 km
+          </span>
+        </div>
+        <div class="geo-info-row">
+          <span>🔗 View on Map:</span>
+          <span id="geoMapLink">—</span>
+        </div>
+      </div>
+
+      <!-- Proceed Button -->
+      <button id="proceedToFaceBtn"
+              onclick="proceedToFaceScan()"
+              style="display:none;margin-top:14px;
+                     background:#2e7d32;width:100%">
+        ✅ Location Verified — Proceed to Face Scan →
+      </button>
+    </div>
+
+    <!-- ── STEP 2: FACE SCAN SECTION ─────────────────────── -->
+    <div id="faceSection" style="display:none">
+      <div class="step-section-title">
+        📷 Step 2 — Face Verification
+      </div>
+
+      <!-- Two panels -->
+      <div class="scan-panels">
+        <div class="scan-panel">
+          <p class="panel-label">📹 Live Camera</p>
+          <div class="video-circle">
+            <video id="scanVideo" autoplay muted
+                   playsinline></video>
+          </div>
+        </div>
+        <div class="scan-panel">
+          <p class="panel-label">🖼️ Stored Photo</p>
+          <div class="photo-circle">
+            <img id="storedMemberPhoto" alt="Stored Photo"
+                 src="" style="display:none"/>
+            <div id="noPhotoMsg">❌ No photo found</div>
+          </div>
+          <p id="memberNameLabel"
+             style="text-align:center;font-size:12px;
+                    color:#555;margin-top:6px"></p>
+        </div>
+      </div>
+
+      <div id="scanStatus" class="scan-status-box">
+        ⏳ Initializing...
+      </div>
+
+      <!-- Face Result Box: only MATCHED ✅ or NOT MATCHED ❌ -->
+      <!-- No score percentage shown to user -->
+      <div id="faceResultBox" style="display:none"></div>
+      <div id="matchScoreBox" style="display:none"></div>
+
+      <div style="text-align:center;margin-top:14px">
+        <button id="startScanBtn" onclick="runFaceScan()"
+                style="display:none;background:#1565c0">
+          📸 Scan Face
+        </button>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: OTP + QUANTITY + BILL SECTION ───────────── -->
+    <div id="otpSection" style="display:none">
+      <div class="step-section-title">
+        📱 Step 3 — OTP Verification &amp; Bill Generation
+      </div>
+      <div class="verified-badges">
+        <span class="verified-badge">📍 Geo ✅</span>
+        <span class="verified-badge">📷 Face ✅</span>
+        <span class="pending-badge">📱 OTP ⏳</span>
+      </div>
+
+      <!-- OTP Section — Uses citizen's LOGIN OTP -->
+      <p style="font-size:13px;color:#555;margin-bottom:10px">
+        Both verifications passed!
+        Click <strong>Fetch OTP</strong> then ask citizen
+        to tell you the OTP from their dashboard.
+      </p>
+
+      <!-- Instruction Box -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;
+                  border-radius:10px;padding:12px 14px;
+                  margin-bottom:12px;font-size:12px;
+                  color:#1565c0;line-height:1.7">
+        📱 The citizen already has an OTP from their login.
+        It is shown in their
+        <strong>🎫 Book Token</strong> dashboard tab.<br/>
+        Ask them to show or verbally tell you the OTP.
+        Enter it below to complete verification.
+        <strong>No new OTP is generated.</strong>
+      </div>
+
+      <div id="otpGeneratedBox" style="display:none;
+           margin-bottom:12px">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;
+                    border-radius:8px;padding:10px 14px;
+                    font-size:12px;color:#15803d;
+                    font-weight:bold">
+          ✅ OTP fetched from citizen's login session.
+          Ask citizen to tell you their 6-digit OTP.
+        </div>
+        <!-- Hidden display element required by JS -->
+        <div id="collectionOTPDisplay"
+             style="display:none"></div>
+        <!-- OTP Timer (hidden — 24hr OTP no countdown needed) -->
+        <span id="collectionOTPTimer"
+              style="display:none"></span>
+      </div>
+
+      <div class="otp-input-row">
+        <input id="collectionOTPInput" type="text"
+               placeholder="Ask citizen their OTP → Enter here"
+               maxlength="6"/>
+        <button id="generateCollectionOTPBtn"
+                onclick="generateCollectionOTP()">
+          🔐 Fetch Citizen OTP
+        </button>
+      </div>
+      <button id="verifyCollectionOTPBtn"
+              onclick="verifyCollectionOTP()"
+              style="display:none;margin-top:8px;
+                     width:100%;background:#1565c0">
+        ✅ Verify OTP → Proceed to Bill
+      </button>
+      <p id="otpVerifyMsg"
+         style="display:none;margin-top:10px;
+                padding:10px;border-radius:8px;
+                font-weight:bold;font-size:13px"></p>
+
+      <!-- ── QUANTITY ENTRY + BILL SECTION ─────────────────── -->
+      <!-- Shows ONLY after OTP verified -->
+      <div id="billSection" style="display:none">
+
+        <div style="margin-top:16px;padding-top:14px;
+                    border-top:2px dashed #e5e7eb">
+          <div class="step-section-title"
+               style="margin-bottom:12px">
+            🧾 Enter Actual Quantity Taken
+          </div>
+          <p style="font-size:12px;color:#888;margin-bottom:14px">
+            Citizen is entitled to the quantities shown below.
+            Enter the <strong>actual quantity they are taking today</strong>.
+            Bill will be generated based on actual quantity only.
+          </p>
+
+          <!-- Quantity Entry Table -->
+          <div id="quantityEntryBox"></div>
+
+          <!-- Generate Bill Button -->
+          <button id="generateBillBtn"
+                  onclick="generateAndShowBill()"
+                  style="width:100%;padding:12px;
+                         background:#2e7d32;color:white;
+                         border:none;border-radius:8px;
+                         cursor:pointer;font-size:14px;
+                         font-weight:bold;margin-top:14px">
+            🧾 Generate Bill &amp; Complete Distribution
+          </button>
+
+          <!-- Bill Preview -->
+          <div id="billPreviewBox" style="display:none;
+               margin-top:16px">
+          </div>
+
+          <p id="billCompleteMsg"
+             style="display:none;margin-top:10px;
+                    padding:12px;border-radius:8px;
+                    font-weight:bold;font-size:13px;
+                    text-align:center"></p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Close button always visible -->
+    <div style="text-align:center;margin-top:16px;
+                padding-top:14px;border-top:1px solid #e5e7eb">
+      <button onclick="closeFaceScanner()"
+              style="background:#c62828;width:auto;
+                     padding:8px 24px">
+        ✕ Close
+      </button>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
